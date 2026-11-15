@@ -415,6 +415,17 @@ body {
   display: block;
 }
 
+.photo-credit {
+  margin-top: 0.35rem;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  color: var(--text-muted, #777);
+}
+
+.photo-credit a {
+  color: inherit;
+}
+
 article::after {
   content: '';
   display: table;
@@ -691,6 +702,11 @@ label {
     width: 100%;
     display: block;
     border-radius: 4px;
+  }
+
+  .print-photo .photo-credit {
+    font-size: 6.5pt;
+    margin-top: 0.15cm;
   }
 
   .print-entry::after { content: ''; display: table; clear: both; }

@@ -97,6 +97,20 @@ function formatYear(n, circa) {
 
 // ── Render: entry ─────────────────────────────────────────────
 
+// Credit line for a CC-licensed photo (the licence requires naming the
+// photographer and the licence). Public-domain photos have no photoCredit.
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function photoCreditHtml(entry, { links = true } = {}) {
+  const c = entry.photoCredit;
+  if (!c) return '';
+  const author  = links ? `<a href="${escapeHtml(c.source)}" target="_blank" rel="noopener">${escapeHtml(c.author)}</a>` : escapeHtml(c.author);
+  const licence = links ? `<a href="${escapeHtml(c.licenceUrl)}" target="_blank" rel="noopener">${escapeHtml(c.licence)}</a>` : escapeHtml(c.licence);
+  return `<figcaption class="photo-credit">Photo: ${author}, ${licence}, via Wikimedia Commons</figcaption>`;
+}
+
 function renderEntry(entry) {
   const content = document.getElementById('content');
 
@@ -114,6 +128,7 @@ function renderEntry(entry) {
   const photoHtml = photoSrc
     ? `<figure class="entry-photo">
          <img src="${photoSrc}" alt="${entry.title}" />
+         ${photoCreditHtml(entry)}
        </figure>`
     : '';
 
@@ -345,7 +360,7 @@ async function exportEntryPDF(entry) {
   if (entry.photo) {
     const src = entry.photo.startsWith('http') ? entry.photo : `./photos/${entry.photo}`;
     const dataUrl = await photoToDataUrl(src);
-    photoHtml = `<figure class="print-photo"><img src="${dataUrl}" alt="${entry.title}" /></figure>`;
+    photoHtml = `<figure class="print-photo"><img src="${dataUrl}" alt="${entry.title}" />${photoCreditHtml(entry, { links: false })}</figure>`;
   }
 
   const body = marked.parse(parseWikilinks(entry.body));
