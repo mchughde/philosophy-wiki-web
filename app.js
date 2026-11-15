@@ -118,7 +118,7 @@ function renderEntry(entry) {
   const htmlBody = marked.parse(processedBody);
 
   const tagsHtml = (entry.tags || [])
-    .map(t => `<span class="tag">${t}</span>`)
+    .map(t => `<a class="tag" href="#tag:${encodeURIComponent(t)}" title="All philosophers tagged ${escapeHtml(t)}">${escapeHtml(t)}</a>`)
     .join('');
 
   const photoSrc = entry.photo
@@ -186,6 +186,32 @@ async function renderIndex() {
 }
 
 
+// ── Render: everyone with one tag ─────────────────────────────
+
+async function renderTag(tag) {
+  const content = document.getElementById('content');
+  const entries = (await getAllEntries())
+    .filter(e => (e.tags || []).some(t => t.toLowerCase() === tag.toLowerCase()))
+    .sort((a, b) => (a.born ?? 9999) - (b.born ?? 9999));
+
+  const items = entries.map(e => `
+      <li>
+        <a href="#entry:${e.slug}" class="tag-page-name">${escapeHtml(e.title)}</a>
+        <span class="tag-page-dates">${formatYear(e.born, e.circaBorn)} – ${formatYear(e.died, e.circaDied)}</span>
+      </li>`).join('');
+
+  content.innerHTML = `
+    <div id="tag-page">
+      <p class="tag-page-label">Tag</p>
+      <h1 class="entry-title">${escapeHtml(tag)}</h1>
+      <p class="tag-page-count">${entries.length} ${entries.length === 1 ? 'philosopher' : 'philosophers'}, oldest first</p>
+      ${entries.length ? `<ul class="tag-page-list">${items}</ul>` : '<p class="state-msg">No philosophers have this tag.</p>'}
+    </div>
+  `;
+  document.querySelectorAll('#entry-list a').forEach(a => a.classList.remove('active'));
+  document.title = `${tag} — Philosophy Wiki`;
+}
+
 // ── Sidebar ───────────────────────────────────────────────────
 
 async function buildSidebar() {
@@ -243,6 +269,8 @@ async function route() {
       document.getElementById('content').innerHTML =
         `<p class="state-msg">Entry "<strong>${slug}</strong>" not found.</p>`;
     }
+  } else if (hash.startsWith('#tag:')) {
+    await renderTag(decodeURIComponent(hash.slice(5)));
   } else {
     renderIndex();
   }
@@ -270,16 +298,35 @@ function initSearch() {
 
     searchTimeout = setTimeout(async () => {
       const hits = await searchEntries(q);
-      if (!hits.length) {
+      const ql = q.toLowerCase();
+
+      // Tags that match what's typed come first, each opening the full list for that tag.
+      const tagCounts = {};
+      (await getAllEntries()).forEach(e => (e.tags || []).forEach(t => {
+        if (t.toLowerCase().includes(ql)) tagCounts[t] = (tagCounts[t] || 0) + 1;
+      }));
+      const tagRows = Object.keys(tagCounts)
+        .sort((a, b) => (b.toLowerCase().startsWith(ql) - a.toLowerCase().startsWith(ql)) || a.localeCompare(b))
+        .map(t => `
+            <div class="search-result search-result-tag" data-tag="${escapeHtml(t)}">
+              <span class="search-result-kind">Tag</span>
+              <span class="search-result-title">${escapeHtml(t)}</span>
+              <span class="search-result-count">· ${tagCounts[t]} ${tagCounts[t] === 1 ? 'philosopher' : 'philosophers'}</span>
+            </div>`).join('');
+
+      if (!hits.length && !tagRows) {
         results.innerHTML = '<div class="search-result"><span class="search-result-title">No results</span></div>';
       } else {
-        results.innerHTML = hits.slice(0, 8).map(e => {
-          const idx = e.body.toLowerCase().indexOf(q.toLowerCase());
+        results.innerHTML = tagRows + hits.slice(0, 8).map(e => {
+          const idx = e.body.toLowerCase().indexOf(ql);
           let excerpt = '';
           if (idx !== -1) {
             const start = Math.max(0, idx - 30);
             excerpt = (start > 0 ? '…' : '') +
               e.body.slice(start, idx + q.length + 60).replace(/\n/g, ' ') + '…';
+          } else {
+            const tagged = (e.tags || []).filter(t => t.toLowerCase().includes(ql));
+            if (tagged.length) excerpt = 'Tagged ' + tagged.join(', ');
           }
           return `
             <div class="search-result" data-slug="${e.slug}">
@@ -294,9 +341,11 @@ function initSearch() {
   });
 
   results.addEventListener('click', e => {
-    const item = e.target.closest('[data-slug]');
+    const item = e.target.closest('[data-slug], [data-tag]');
     if (!item) return;
-    location.hash = `#entry:${item.dataset.slug}`;
+    location.hash = item.dataset.tag
+      ? `#tag:${encodeURIComponent(item.dataset.tag)}`
+      : `#entry:${item.dataset.slug}`;
     input.value = '';
     results.innerHTML = '';
     results.classList.remove('visible');
