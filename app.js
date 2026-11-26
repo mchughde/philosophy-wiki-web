@@ -452,6 +452,48 @@ async function exportEntryPDF(entry) {
 
 // ── Site title → home ─────────────────────────────────────────
 
+// ── Collapsible sidebar (iPad and iPhone) ─────────────────────
+// The menu button only shows on touch screens and narrow windows (style.css).
+// On a phone the list starts hidden and closes again after picking an entry;
+// on an iPad the last choice is remembered on that device.
+
+const NAV_KEY = 'philwiki.sidebarHidden';
+const phoneQuery = window.matchMedia('(max-width: 700px)');
+
+function setSidebarHidden(hidden, remember) {
+  document.body.classList.toggle('nav-collapsed', hidden);
+  const btn = document.getElementById('btn-menu');
+  btn.setAttribute('aria-expanded', String(!hidden));
+  btn.setAttribute('aria-label', hidden ? 'Show the list of philosophers' : 'Hide the list of philosophers');
+  if (remember && !phoneQuery.matches) {
+    try { localStorage.setItem(NAV_KEY, hidden ? '1' : '0'); } catch { /* private mode */ }
+  }
+}
+
+function initSidebarToggle() {
+  let saved = null;
+  try { saved = localStorage.getItem(NAV_KEY); } catch { /* private mode */ }
+  setSidebarHidden(phoneQuery.matches ? true : saved === '1', false);
+
+  document.getElementById('btn-menu').addEventListener('click', () => {
+    const hidden = !document.body.classList.contains('nav-collapsed');
+    setSidebarHidden(hidden, true);
+    if (!hidden && phoneQuery.matches) window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // On a phone, picking a philosopher closes the list so the entry is in view.
+  document.getElementById('entry-list').addEventListener('click', e => {
+    if (e.target.closest('a') && phoneQuery.matches) setSidebarHidden(true, false);
+  });
+
+  // Turning the phone into a wider window (or back) re-applies the right default.
+  phoneQuery.addEventListener('change', () => {
+    let s = null;
+    try { s = localStorage.getItem(NAV_KEY); } catch { /* private mode */ }
+    setSidebarHidden(phoneQuery.matches ? true : s === '1', false);
+  });
+}
+
 function initHomeLink() {
   document.getElementById('site-title').addEventListener('click', () => {
     location.hash = '';
@@ -494,6 +536,7 @@ async function boot() {
   }
 
   await buildSidebar();
+  initSidebarToggle();
   initSearch();
   initHomeLink();
   initContentEvents();
