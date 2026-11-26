@@ -486,6 +486,14 @@ function initSidebarToggle() {
     if (e.target.closest('a') && phoneQuery.matches) setSidebarHidden(true, false);
   });
 
+  // On a phone, open one period at a time so the list stays short.
+  document.getElementById('entry-list').addEventListener('toggle', e => {
+    if (!phoneQuery.matches || !e.target.open) return;
+    document.querySelectorAll('#entry-list details.sidebar-group[open]').forEach(d => {
+      if (d !== e.target) d.open = false;
+    });
+  }, true);
+
   // Turning the phone into a wider window (or back) re-applies the right default.
   phoneQuery.addEventListener('change', () => {
     let s = null;

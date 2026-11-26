@@ -867,10 +867,18 @@ label {
     padding: 1rem;
   }
 
-  #entry-list { display: flex; flex-wrap: wrap; gap: 0.25rem; }
-  .sidebar-group { width: 100%; }
-  .sidebar-group-list { display: flex; flex-wrap: wrap; gap: 0.25rem; padding-left: 0; }
+  /* Phone list: one name per line, each period a tidy block */
+  #sidebar { padding: 0.75rem 1rem 1rem; }
+  #sidebar h2 { margin-bottom: 0.5rem; }
+  .sidebar-group {
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 0;
+  }
+  .sidebar-group:last-child { border-bottom: none; }
+  .sidebar-group-header { padding: 0.8rem 0.25rem; font-size: 0.75rem; }
+  .sidebar-group-list { padding: 0 0 0.5rem 0.75rem; margin-top: 0; }
   .sidebar-group-list li { margin: 0; }
+  #entry-list a { padding: 0.45rem 0.5rem; font-size: 1rem; }
 
   #content { padding: 1.5rem 1.25rem; }
   .entry-title { font-size: 1.8rem; }

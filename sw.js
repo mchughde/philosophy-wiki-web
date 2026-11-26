@@ -1,4 +1,4 @@
-const CACHE_NAME = 'philwiki-v66';
+const CACHE_NAME = 'philwiki-v67';
 
 const PRECACHE = [
   './',
