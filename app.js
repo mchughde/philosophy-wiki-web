@@ -2,7 +2,7 @@
 // Philosophy Wiki — App
 // ============================================================
 
-import { seedEntries, getEntry, getAllEntries, searchEntries } from './db.js';
+import { seedEntries, getEntry, getAllEntries, searchEntries, putNote, getNote } from './db.js';
 
 // ── Loading entries ──────────────────────────────────────────
 // On the Mac's own server, entries.js sits beside the app. On the public
@@ -144,7 +144,9 @@ function renderEntry(entry) {
       </header>
       <div class="entry-body">${htmlBody}</div>
     </article>
+    <div id="entry-notes"></div>
   `;
+  renderEntryNotes(entry);
 
   // Update active link and ensure its group is open
   document.querySelectorAll('#entry-list a').forEach(a => {
@@ -157,6 +159,126 @@ function renderEntry(entry) {
   });
 
   document.title = `${entry.title} — Philosophy Wiki`;
+}
+
+// ── Sources and fact-check (on the site only, never in the book) ──
+// Each philosopher's sources and fact-check live in the private repo's
+// "Source material" folder. "Source material/index.json" (written by
+// scripts/source-index.mjs) lists the sources and names each folder. Both are read
+// like entries.js: from the Mac's own files locally, through the GitHub API with the
+// access key on the website. Each copy read is kept on the device for offline use.
+// Added 27 November 2026, at the user's request, after Paris History Plaques.
+
+const NOTES_DIR = 'Source material';
+
+function repoPath(p) { return p.split('/').map(encodeURIComponent).join('/'); }
+
+async function fetchPrivateText(p) {
+  let res;
+  if (IS_LOCAL) {
+    res = await fetch(`./${repoPath(p)}`, { cache: 'no-cache' });
+  } else {
+    const key = readKey();
+    if (!key) throw new Error('no key');
+    res = await fetch(`https://api.github.com/repos/${DATA_REPO}/contents/${repoPath(p)}`, {
+      headers: {
+        Authorization: `Bearer ${key}`,
+        Accept: 'application/vnd.github.raw',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+      cache: 'no-store',
+    });
+  }
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.text();
+}
+
+// Fresh copy when online (and keep it); the device's copy when not; null if neither.
+async function loadNote(p) {
+  try {
+    const text = await fetchPrivateText(p);
+    putNote(p, text).catch(() => {});
+    return text;
+  } catch {
+    return getNote(p).catch(() => null);
+  }
+}
+
+let _notesIndex = null;                           // read once per visit
+function loadNotesIndex() {
+  if (!_notesIndex) {
+    _notesIndex = loadNote(`${NOTES_DIR}/index.json`)
+      .then(t => (t ? JSON.parse(t) : null))
+      .catch(() => null);
+  }
+  return _notesIndex;
+}
+
+function sourcesHtml(info) {
+  const items = info.sources.map(s => {
+    if (!s.usable) {
+      return `<li><span class="src-site">${escapeHtml(s.site)}</span>: the saved page was empty or broken, so this entry wasn't checked against it.</li>`;
+    }
+    const title = s.title ? `“${escapeHtml(s.title)}”` : '';
+    const linked = s.url && title
+      ? `<a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${title}</a>`
+      : title;
+    return `<li><span class="src-site">${escapeHtml(s.site)}</span>${linked ? `: ${linked}` : ''}</li>`;
+  }).join('');
+  return `<ul class="src-list">${items}</ul>`;
+}
+
+function factCheckBodyHtml(md) {
+  // The page already shows the philosopher's name: drop the report's own title line
+  const body = md.replace(/^# Fact-check:[^\n]*\n/, '');
+  const html = marked.parse(body);
+  // Wide tables scroll sideways on a phone instead of squashing
+  return html.replace(/<table>/g, '<div class="table-scroll"><table>')
+             .replace(/<\/table>/g, '</table></div>');
+}
+
+async function renderEntryNotes(entry) {
+  const box = document.getElementById('entry-notes');
+  if (!box) return;
+  const stillHere = () => document.getElementById('entry-notes') === box
+    && location.hash === `#entry:${entry.slug}`;
+
+  const index = await loadNotesIndex();
+  const info = index?.philosophers?.[entry.title];
+  if (!stillHere()) return;
+  if (!info) {
+    box.innerHTML = navigator.onLine === false
+      ? `<p class="ref-notes-empty ref-notes">Sources and fact-check: connect to the internet once to see them on this device.</p>`
+      : '';
+    return;
+  }
+
+  const factMd = info.factCheck
+    ? await loadNote(`${NOTES_DIR}/${info.folder}/fact-check.md`)
+    : null;
+  if (!stillHere()) return;
+
+  const factPart = factMd
+    ? `<details class="ref-notes">
+         <summary>Fact-check (not in the book)</summary>
+         <div class="ref-notes-body fact-check">${factCheckBodyHtml(factMd)}</div>
+       </details>`
+    : `<details class="ref-notes">
+         <summary>Fact-check (not in the book)</summary>
+         <p class="ref-notes-empty">${info.factCheck
+           ? 'Connect to the internet once to see the fact-check on this device.'
+           : 'Not fact-checked yet.'}</p>
+       </details>`;
+
+  box.innerHTML = `
+    <details class="ref-notes">
+      <summary>Sources (not in the book)</summary>
+      <div class="ref-notes-body">
+        <p>This entry was written from these articles only:</p>
+        ${sourcesHtml(info)}
+      </div>
+    </details>
+    ${factPart}`;
 }
 
 // ── Render: index ─────────────────────────────────────────────

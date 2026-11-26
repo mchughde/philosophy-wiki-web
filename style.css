@@ -452,6 +452,50 @@ a.tag:hover {
   margin: 2.5rem 0;
 }
 
+/* ── Sources and fact-check under each entry (site only, never in the book) ──
+   Folded by default, like Paris History Plaques' reference notes. Added 27 November 2026. */
+
+.ref-notes {
+  max-width: var(--max-width);
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  color: var(--text);
+}
+#entry-notes { margin-top: 3rem; }
+#entry-notes .ref-notes:first-child { margin-top: 0; }
+.ref-notes summary {
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.ref-notes summary:hover { color: var(--text); }
+.ref-notes-body { font-size: 0.88rem; line-height: 1.6; margin-top: 0.75rem; }
+.ref-notes-body p { margin-bottom: 0.75rem; }
+.ref-notes-body h2,
+.ref-notes-body h3 {
+  font-size: 0.8rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-muted); margin: 1.5rem 0 0.5rem;
+}
+.ref-notes-body a { color: var(--link); text-decoration: none; border-bottom: 1px solid var(--border); }
+.ref-notes-body a:hover { color: var(--link-hover); border-bottom-color: var(--link-hover); }
+.ref-notes-body strong { font-weight: 600; }
+.ref-notes-body ul { padding-left: 1.25rem; margin-bottom: 0.75rem; }
+.ref-notes-body li { margin-bottom: 0.3rem; }
+.src-site { font-weight: 600; }
+.ref-notes-empty { color: var(--text-muted); font-style: italic; margin-top: 0.75rem; }
+p.ref-notes-empty.ref-notes { margin-top: 0; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0.5rem 0 1.25rem; }
+.fact-check table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: 0.8rem; line-height: 1.45; }
+.fact-check th, .fact-check td { border: 1px solid var(--border); padding: 0.4rem 0.5rem; text-align: left; vertical-align: top; }
+.fact-check th { background: var(--surface); font-weight: 600; }
+.fact-check td:nth-child(2) { white-space: nowrap; }
+
 /* ── Index / home page ── */
 
 #index-page h1 {

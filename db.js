@@ -1,8 +1,10 @@
 // IndexedDB wrapper for Philosophy Wiki
-// Schema: entries store keyed by slug
+// Schema: entries store keyed by slug; notes store (since version 2, 27 November 2026)
+// keeps each philosopher's source list and fact-check, keyed by path, for offline reading
 
 const DB_NAME = 'philwiki';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
+const NOTES = 'notes';
 const STORE = 'entries';
 
 let _db = null;
@@ -18,6 +20,9 @@ function openDB() {
       if (!db.objectStoreNames.contains(STORE)) {
         const store = db.createObjectStore(STORE, { keyPath: 'slug' });
         store.createIndex('title', 'title', { unique: false });
+      }
+      if (!db.objectStoreNames.contains(NOTES)) {
+        db.createObjectStore(NOTES);
       }
     };
 
@@ -100,4 +105,25 @@ async function searchEntries(query) {
   );
 }
 
-export { putEntry, seedEntries, getEntry, getAllEntries, searchEntries };
+// Notes (source index, fact-checks): plain text keyed by their path in the repo
+async function putNote(path, text) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTES, 'readwrite');
+    tx.objectStore(NOTES).put(text, path);
+    tx.oncomplete = resolve;
+    tx.onerror = e => reject(e.target.error);
+  });
+}
+
+async function getNote(path) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTES, 'readonly');
+    const req = tx.objectStore(NOTES).get(path);
+    req.onsuccess = e => resolve(e.target.result ?? null);
+    req.onerror = e => reject(e.target.error);
+  });
+}
+
+export { putNote, getNote, putEntry, seedEntries, getEntry, getAllEntries, searchEntries };
